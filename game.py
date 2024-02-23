@@ -61,6 +61,158 @@ def parse_cmdline_args() -> argparse.Namespace:
             )
     return parser.parse_args()
 
+class Game:
+    def __init__(self, windowed):
+        pygame.init()
+
+        # TODO: create classes OsWindow and GameScreen to organize this data.
+        # Use the --windowed cmdline arg
+        self.is_fullscreen = not windowed
+
+        # OS window
+        pygame.display.set_caption("Experiment with Sprite Animations")
+        os.environ["PYGAME_BLEND_ALPHA_SDL2"] = "1"     # Use SDL2 alpha blending
+        os.environ["SDL_VIDEO_WINDOW_POS"] = "800,0"
+        ### Surface((width, height), flags=0, depth=0, masks=None) -> Surface
+        self.game_art = pygame.Surface(
+                # (16*40,9*40),                           # 640x360x32
+                # (16*30,9*30),                           # 480x270x32
+                (16*20,9*20),                           # 320x180x32
+                flags=0,                                # Example flag: pygame.SRCALPHA
+                )
+        logger.debug(f"self.game_art: {self.game_art}")
+        self.render_scale = 2
+        # Screen size is the portion of the screen that is filled with game art.
+        # Initial windowed size is hardcoded to be 2 * game_art size
+        self.windowed_size = (int(self.game_art.get_width()*self.render_scale),
+                              int(self.game_art.get_height()*self.render_scale))
+        logger.debug(f"self.windowed_size: {self.windowed_size}")
+        self.screen_flags = pygame.RESIZABLE
+        if self.is_fullscreen:
+            self.screen_flags |= pygame.FULLSCREEN
+        self.os_window = None
+        self.screen_size = None
+        self.screen_offset = None
+        self.get_new_os_window( # Updates self.os_window, self.screen_size, self.screen_offset
+                self.is_fullscreen,
+                self.windowed_size,
+                self.screen_flags
+                )
+
+        # FPS
+        self.clock = pygame.time.Clock()
+
+        self.windowed = windowed
+
+    def run(self):
+        while True: self.game_loop()
+
+    def game_loop(self):
+        # Set game background color
+        bgnd_color = pygame.color.Color(100,100,100)
+        self.game_art.fill(bgnd_color)
+
+        # TODO: Draw a square
+        
+        self.handle_ui_events()
+
+        # Clear the OS_window to black
+        self.os_window.fill((0,0,0))
+        # Size, position, and draw the game screen in the OS window
+        self.os_window.blit(pygame.transform.scale(self.game_art, self.screen_size), self.screen_offset)
+        # Draw to the OS Window
+        pygame.display.update()
+
+        ### clock.tick(framerate=0) -> milliseconds
+        self.clock.tick(60)
+
+    def handle_ui_events(self):
+        for event in pygame.event.get():
+            match event.type:
+                case pygame.QUIT: sys.exit()
+                case pygame.WINDOWRESIZED:
+                    if not self.is_fullscreen:
+                        self.windowed_size = (event.x, event.y)
+                        logger.debug(f"self.windowed_size: {self.windowed_size:}")
+                        self.screen_size = self.windowed_size
+                        self.update_screen()
+                case pygame.KEYDOWN:
+                    match event.key:
+                        case pygame.K_ESCAPE | pygame.K_q: sys.exit()
+                        case pygame.K_F11:
+                            self.is_fullscreen = not self.is_fullscreen
+                            if self.is_fullscreen:
+                                # Set FULLSCREEN flag
+                                self.screen_flags |= pygame.FULLSCREEN
+                            else:
+                                # Clear FULLSCREEN flag
+                                self.screen_flags &= ~pygame.FULLSCREEN
+                            self.get_new_os_window(
+                                    self.is_fullscreen,
+                                    self.windowed_size,
+                                    self.screen_flags)
+
+    def get_new_os_window(self, is_fullscreen:bool, windowed_size:tuple, screen_flags:int) -> None:
+        """Get a new OS window when the OS window switches between windowed and fullscreen.
+
+        Context: pressing F11 toggles fullscreen by setting/clearing the
+        self.screen_flags and calling "get_new_os_window".
+
+        Updates
+        -------
+        self.os_window
+        self.screen_size
+        """
+        if is_fullscreen:
+            logger.info("FULLSCREEN")
+            # Get desktop size (size of full screen)
+            # TODO: handle case where there are multiple displays
+            desktop_sizes = pygame.display.get_desktop_sizes()
+            logger.debug(f"pygame.display.get_desktop_sizes(): {desktop_sizes}")
+            ### Framework laptop: pygame.display.get_desktop_sizes(): [(1496, 1002)]
+            self.screen_size = desktop_sizes[0]
+        else:
+            logger.info("WINDOWED")
+            self.screen_size = windowed_size
+        logger.info(f"self.screen_size: {self.screen_size}")
+        self.update_screen()
+        # Apply updated screen size and flags
+        # (If full screen, screen size doesn't matter here, but will matter
+        # later when blitting).
+        self.os_window = pygame.display.set_mode(self.screen_size, screen_flags)
+        logger.debug(f"self.os_window: {self.os_window}")
+
+    def update_screen(self) -> None:
+        """Recalculate screen size and position after window size changes.
+
+        Window size can change either by going fullscreen or by the user
+        click-dragging the window border.
+
+        Recalculate to maintain game art aspect ratio and keep screen centered
+        in OS window.
+
+        Updates
+        -------
+        self.render_scale
+        self.screen_size
+        self.screen_offset
+        """
+        new_window_size = self.screen_size
+        # Calculate the render_scale
+        self.render_scale = min(new_window_size[0]/self.game_art.get_width(),
+                                new_window_size[1]/self.game_art.get_height()
+                                )
+        logger.debug(f"self.render_scale: {self.render_scale}")
+        # Calculate new screen size (largest screen that fits in new window
+        # whilst preserving game art aspect ratio)
+        self.screen_size = (int(self.game_art.get_width()*self.render_scale),
+                            int(self.game_art.get_height()*self.render_scale))
+        # Calculate new screen offset in OS window
+        self.screen_offset = (
+                (new_window_size[0] - self.screen_size[0])//2,
+                (new_window_size[1] - self.screen_size[1])//2)
+        logger.debug(f"self.screen_offset: {self.screen_offset}")
+
 if __name__ == '__main__':
     args = parse_cmdline_args()
     logger = setup_logging(
@@ -69,3 +221,4 @@ if __name__ == '__main__':
             log_file=Path(__file__).with_suffix(".log") if args.save_log_file else None
             )
     atexit.register(shutdown)
+    Game(args.windowed).run()
