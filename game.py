@@ -12,6 +12,7 @@ import argparse
 from pathlib import Path
 from scripts.utils import (
         setup_logging,
+        PolygonPlayer
         )
 
 def shutdown():
@@ -99,6 +100,8 @@ class Game:
                 self.screen_flags
                 )
 
+        self.polygon_player = PolygonPlayer(self, img_dur=6)
+
         # FPS
         self.clock = pygame.time.Clock()
 
@@ -112,8 +115,10 @@ class Game:
         bgnd_color = pygame.color.Color(100,100,100)
         self.game_art.fill(bgnd_color)
 
-        # TODO: Draw a square
-        
+        # Draw a square
+        self.polygon_player.update()
+        self.polygon_player.render()
+
         self.handle_ui_events()
 
         # Clear the OS_window to black

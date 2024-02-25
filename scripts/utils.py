@@ -1,12 +1,41 @@
 #!/usr/bin/env python
 # vim: set fileencoding=utf-8 :
-"""Utilities."""
+"""Utilities.
+
+random examples
+---------------
+
+    >>> 0 < random.random() < 1
+    True
+    >>> type(random.random())
+    <class 'float'>
+
+    >>> 1<<16
+    65536
+    >>> 0 < random.random()*(1<<16) < 1<<16
+    True
+    >>> type(random.random()*(1<<16))
+    <class 'float'>
+
+    >>> list(range(0,2))
+    [0, 1]
+    >>> 0 < random.choice(list(range(1<<16))) < 1<<16
+    True
+    >>> type(random.choice(list(range(1<<16))))
+    <class 'int'>
+
+    >>> -1 < random.uniform(-1,1) < 1
+    True
+    >>> type(random.uniform(-1,1))
+    <class 'float'>
+"""
 import os
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"          # Set pygame env var to hide "Hello" msg
 import pygame
 from pathlib import Path
 import logging
 import sys
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -95,3 +124,76 @@ def setup_logging(loglevel:str="WARNING",
     logger.addHandler(console_handler)                  # Add logging to console
     return logger
 
+class PolygonPlayer:
+    def __init__(self, game, img_dur:int):
+        self.game = game
+        self.img_dur = img_dur
+        # Store a basic shape which will then get animated with randomness.
+        self.shape = [
+                pygame.math.Vector2(2,2), # top left
+                pygame.math.Vector2(8,2), # top right
+                pygame.math.Vector2(8,8), # bot right
+                pygame.math.Vector2(5,6), # crotch
+                pygame.math.Vector2(2,8), # bot left
+                ]
+
+        # Update animation when frame % img_dur is 0
+        self.frame = 0
+
+    def update(self) -> None:
+        if self.frame == 0:
+            # Update how you look
+            self.animate_points()
+        self.frame = (self.frame+1) % self.img_dur
+
+    def animate_points(self) -> None:
+        # TODO: add animation here
+        # For now, I am just adding randomness to the shape.
+        # Copy shape to a new list of points
+        self.points = [pygame.math.Vector2(point) for point in self.shape]
+        if 0: # Example of modifying a single point
+            self.points[0][0] += random.choice(list(range(-1,1+1)))
+            self.points[0][1] += random.choice(list(range(-1,1+1)))
+        if 1: # Modify all points
+            for point in self.points:
+                point[0] += random.choice(list(range(-1,1+1)))
+                point[1] += random.choice(list(range(-1,1+1)))
+    def render(self) -> None:
+        use_alpha = False
+        use_add = not use_alpha
+        if use_alpha:
+            flag = pygame.BLEND_ALPHA_SDL2
+            polygon_color_shape = pygame.color.Color(90,10,10)
+            polygon_color_effect = pygame.color.Color(20,20,20,100)
+        if use_add:
+            flag = pygame.BLEND_ADD
+            polygon_color_shape = pygame.color.Color(40,40,40)
+            polygon_color_effect = pygame.color.Color(40,40,40)
+
+        if use_alpha: # Only show base shape while debugging
+            draw_shape = False
+            draw_effect = True
+        if use_add: # Show both shapes: the add makes the basic shape look dynamic
+            draw_shape = True
+            draw_effect = True
+        if draw_shape:
+            polygon_surf = pygame.Surface((10,10), pygame.SRCALPHA)
+            ### pygame.draw.polygon(surface, color, points, width=0) -> Rect
+            pygame.draw.polygon(polygon_surf, polygon_color_shape, self.shape)
+            ### Surface.blit(source, dest, area=None, special_flags=0) -> Rect
+            self.game.game_art.blit(polygon_surf,
+                                    (self.game.game_art.get_width()/2, 10),
+                                    special_flags=flag)
+        if draw_effect:
+            polygon_surf = pygame.Surface((10,10), pygame.SRCALPHA)
+            ### pygame.draw.polygon(surface, color, points, width=0) -> Rect
+            pygame.draw.polygon(polygon_surf, polygon_color_effect, self.points)
+            ### Surface.blit(source, dest, area=None, special_flags=0) -> Rect
+            self.game.game_art.blit(polygon_surf,
+                                    (self.game.game_art.get_width()/2, 10),
+                                    special_flags=flag)
+
+if __name__ == '__main__':
+    print(f"Run doctests in {Path(__file__).name}")
+    import doctest
+    doctest.testmod()
