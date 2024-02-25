@@ -12,8 +12,9 @@ import argparse
 from pathlib import Path
 from scripts.utils import (
         setup_logging,
-        PolygonPlayer
+        PolygonPlayer,
         )
+from scripts.tilemap import Tilemap
 
 def shutdown():
     """Clean up before exiting the game.
@@ -100,6 +101,8 @@ class Game:
                 self.screen_flags
                 )
 
+        self.tilemap = Tilemap(self)
+
         self.polygon_player = PolygonPlayer(self,
                                             pos=(self.game_art.get_width()/2, 0),
                                             img_dur=6)
@@ -117,6 +120,8 @@ class Game:
         # Set game background color
         bgnd_color = pygame.color.Color(100,100,100)
         self.game_art.fill(bgnd_color)
+
+        self.tilemap.render(self.game_art)
 
         # Draw a square
         self.polygon_player.update(
