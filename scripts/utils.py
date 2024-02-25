@@ -128,19 +128,25 @@ class Points:
     """
     points: list of pygame.math.Vector2
     """
-    def __init__(self, points:list):
+    def __init__(self, size:tuple, points:list):
         self.points = points
+        self.size = size
 
     def copy_points(self) ->list:
         """Return a deep copy of self.points"""
         return [pygame.math.Vector2(point) for point in self.points]
 
 class PolygonPlayer:
+    """
+    TODO: let size drive shape coordinates
+    TODO: come up with better collision rect based on size
+    """
     def __init__(self, game, pos, img_dur:int):
         self.game = game
         self.img_dur = img_dur
         # Store a basic shape which will then get animated with randomness.
-        self.shape = Points([
+        size = (10,10)
+        self.shape = Points(size,[
                 pygame.math.Vector2(2,2), # top left
                 pygame.math.Vector2(8,2), # top right
                 pygame.math.Vector2(8,8), # bot right
@@ -149,11 +155,15 @@ class PolygonPlayer:
                 ])
         self.pos = list(pos)
         self.velocity = [0,0]
+        self.collisions = {'top':False, 'bottom': False, 'right': False, 'left': False}
 
         # Update animation when frame % img_dur is 0
         self.frame = 0
 
-    def update(self, movement=(0,0)) -> None:
+    def rect(self):
+        return pygame.Rect(*self.pos, *self.shape.size)
+
+    def update(self, tilemap, movement=(0,0)) -> None:
         """Do the physics.
 
         - Calculate motion
@@ -161,6 +171,9 @@ class PolygonPlayer:
         - TODO: check for collisions
         - Advance animation by one tick of the game loop
         """
+        # Apply gravity with terminal velocity
+        self.velocity[1] = min(3, self.velocity[1] + 0.1)
+
         # Calculate motion
         frame_movement = (movement[0] + self.velocity[0], # x
                           movement[1] + self.velocity[1]) # y
@@ -168,8 +181,32 @@ class PolygonPlayer:
         self.pos[0] += frame_movement[0]                # Update x
         self.pos[1] += frame_movement[1]                # Update y
 
-        # Apply gravity with terminal velocity
-        self.velocity[1] = min(3, self.velocity[1] + 0.1)
+        # Reset collisions
+        self.collisions = {'top':False, 'bottom': False, 'right': False, 'left': False}
+
+        # TODO: Check for collisions
+        player_rect = self.rect()
+        for rect in tilemap.rects_around(self.pos):
+            ### pygame.Rect.colliderect(Rect)
+            if player_rect.colliderect(rect):
+                if frame_movement[0] > 0:
+                    player_rect.right = rect.left
+                    self.collisions['right'] = True
+                if frame_movement[0] < 0:
+                    player_rect.left = rect.right
+                    self.collisions['left'] = True
+                if frame_movement[1] > 0:
+                    player_rect.bottom = rect.top
+                    self.collisions['bottom'] = True
+                if frame_movement[1] < 0:
+                    player_rect.top = rect.bottom
+                    self.collisions['top'] = True
+            self.pos[0] = player_rect.x
+            self.pos[1] = player_rect.y
+
+        # Reset velocity if falling/rising stopped by a collision.
+        if self.collisions['bottom'] or self.collisions['top']:
+            self.velocity[1] = 0
 
         # Animation
         if self.frame == 0:

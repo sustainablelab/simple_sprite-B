@@ -21,10 +21,50 @@ class Tilemap:
         right_edge = 4
         wall_height = 3
         for i in range(left_edge,right_edge+1):
-            self.tilemap[(tiles_x//2 + i, tiles_y//2)] = {'type': 'floor'}
+            pos = (tiles_x//2 + i, tiles_y//2)
+            self.tilemap[pos] = {'type': 'floor', 'pos':pos}
         for i in range(1,wall_height+1):
-            self.tilemap[(tiles_x//2 + left_edge, tiles_y//2 - i)] = {'type': 'wall'}
-            self.tilemap[(tiles_x//2 + right_edge, tiles_y//2 - i)] = {'type': 'wall'}
+            # Left walls
+            pos = (tiles_x//2 + left_edge, tiles_y//2 - i)
+            self.tilemap[pos] = {'type': 'wall', 'pos':pos}
+            # Right walls
+            pos = (tiles_x//2 + right_edge, tiles_y//2 - i)
+            self.tilemap[pos] = {'type': 'wall', 'pos':pos}
+
+    def tiles_around(self, pos) -> list:
+        """Return list of tiles near "pos"."""
+        tiles = []
+        # Get location of "pos" in tilemap grid coordinates
+        tile_loc = (int(pos[0] // self.tile_size), int(pos[1] // self.tile_size))
+        NEIGHBOR_OFFSETS = [ # the nine tiles near the player
+                            (-1,-1),                            # bottom-left
+                            ( 0,-1),                            # bottom-center
+                            ( 1,-1),                            # bottom-right
+                            (-1, 0),                            # middle-left
+                            ( 0, 0),                            # middle-center
+                            ( 1, 0),                            # middle-right
+                            (-1, 1),                            # top-left
+                            ( 0, 1),                            # top-center
+                            ( 1, 1),                            # top-right
+                           ]
+        for offset in NEIGHBOR_OFFSETS:
+            this_loc = (tile_loc[0] + offset[0], tile_loc[1] + offset[1])
+            if this_loc in self.tilemap:
+                tiles.append(self.tilemap[this_loc])
+        return tiles
+
+    def rects_around(self, pos) -> list:
+        """Return list of collision rects near "pos"."""
+        rects = []
+        neighbor_tiles = self.tiles_around(pos)
+        for tile in neighbor_tiles:
+            # sys.exit(f"tile: {tile}")
+            rects.append(pygame.Rect(
+                tile['pos'][0] * self.tile_size,
+                tile['pos'][1] * self.tile_size,
+                self.tile_size, self.tile_size))
+        return rects
+
     def render(self, surf, offset=(0,0)):
         """
         TODO: offset: camera motion in pixels
@@ -38,7 +78,8 @@ class Tilemap:
         wall_tile = pygame.Rect(0,0,self.tile_size,self.tile_size)
         wall_surf = pygame.Surface((self.tile_size,self.tile_size))
         pygame.draw.rect(wall_surf, (50,50,50), wall_tile)
-        # Blit
+        # Look up tile in map and blit tile types
+        # TODO: only blit tiles that are on visible screen
         for tile in self.tilemap:
             match self.tilemap[tile]['type']:
                 case 'floor': tile_surf = floor_surf

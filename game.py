@@ -125,6 +125,8 @@ class Game:
 
         # Draw a square
         self.polygon_player.update(
+                # Use tilemap for collision detection
+                self.tilemap,
                 # X movement: (1-0) RIGHT | (0-1) LEFT | (0) BOTH/NONE
                 (self.movement[1] - self.movement[0], 0)
                 )
