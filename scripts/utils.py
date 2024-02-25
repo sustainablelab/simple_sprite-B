@@ -154,11 +154,23 @@ class PolygonPlayer:
         self.frame = 0
 
     def update(self, movement=(0,0)) -> None:
+        """Do the physics.
+
+        - Calculate motion
+        - Apply gravity
+        - TODO: check for collisions
+        - Advance animation by one tick of the game loop
+        """
         # Calculate motion
         frame_movement = (movement[0] + self.velocity[0], # x
                           movement[1] + self.velocity[1]) # y
         # Update position
         self.pos[0] += frame_movement[0]                # Update x
+        self.pos[1] += frame_movement[1]                # Update y
+
+        # Apply gravity with terminal velocity
+        self.velocity[1] = min(3, self.velocity[1] + 0.1)
+
         # Animation
         if self.frame == 0:
             # Update how you look
