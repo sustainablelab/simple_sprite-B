@@ -100,7 +100,10 @@ class Game:
                 self.screen_flags
                 )
 
-        self.polygon_player = PolygonPlayer(self, img_dur=6)
+        self.polygon_player = PolygonPlayer(self,
+                                            pos=(self.game_art.get_width()/2, 0),
+                                            img_dur=6)
+        self.movement = [False, False]                  # [Left, Right]
 
         # FPS
         self.clock = pygame.time.Clock()
@@ -116,7 +119,10 @@ class Game:
         self.game_art.fill(bgnd_color)
 
         # Draw a square
-        self.polygon_player.update()
+        self.polygon_player.update(
+                # X movement: (1-0) RIGHT | (0-1) LEFT | (0) BOTH/NONE
+                (self.movement[1] - self.movement[0], 0)
+                )
         self.polygon_player.render()
 
         self.handle_ui_events()
@@ -156,6 +162,16 @@ class Game:
                                     self.is_fullscreen,
                                     self.windowed_size,
                                     self.screen_flags)
+                        case pygame.K_h | pygame.K_a | pygame.K_LEFT:
+                            self.movement[0] = True
+                        case pygame.K_l | pygame.K_d | pygame.K_RIGHT:
+                            self.movement[1] = True
+                case pygame.KEYUP:
+                    match event.key:
+                        case pygame.K_h | pygame.K_a | pygame.K_LEFT:
+                            self.movement[0] = False
+                        case pygame.K_l | pygame.K_d | pygame.K_RIGHT:
+                            self.movement[1] = False
 
     def get_new_os_window(self, is_fullscreen:bool, windowed_size:tuple, screen_flags:int) -> None:
         """Get a new OS window when the OS window switches between windowed and fullscreen.

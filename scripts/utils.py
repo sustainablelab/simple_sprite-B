@@ -124,23 +124,42 @@ def setup_logging(loglevel:str="WARNING",
     logger.addHandler(console_handler)                  # Add logging to console
     return logger
 
+class Points:
+    """
+    points: list of pygame.math.Vector2
+    """
+    def __init__(self, points:list):
+        self.points = points
+
+    def copy_points(self) ->list:
+        """Return a deep copy of self.points"""
+        return [pygame.math.Vector2(point) for point in self.points]
+
 class PolygonPlayer:
-    def __init__(self, game, img_dur:int):
+    def __init__(self, game, pos, img_dur:int):
         self.game = game
         self.img_dur = img_dur
         # Store a basic shape which will then get animated with randomness.
-        self.shape = [
+        self.shape = Points([
                 pygame.math.Vector2(2,2), # top left
                 pygame.math.Vector2(8,2), # top right
                 pygame.math.Vector2(8,8), # bot right
                 pygame.math.Vector2(5,6), # crotch
                 pygame.math.Vector2(2,8), # bot left
-                ]
+                ])
+        self.pos = list(pos)
+        self.velocity = [0,0]
 
         # Update animation when frame % img_dur is 0
         self.frame = 0
 
-    def update(self) -> None:
+    def update(self, movement=(0,0)) -> None:
+        # Calculate motion
+        frame_movement = (movement[0] + self.velocity[0], # x
+                          movement[1] + self.velocity[1]) # y
+        # Update position
+        self.pos[0] += frame_movement[0]                # Update x
+        # Animation
         if self.frame == 0:
             # Update how you look
             self.animate_points()
@@ -150,7 +169,7 @@ class PolygonPlayer:
         # TODO: add animation here
         # For now, I am just adding randomness to the shape.
         # Copy shape to a new list of points
-        self.points = [pygame.math.Vector2(point) for point in self.shape]
+        self.points = self.shape.copy_points()
         if 0: # Example of modifying a single point
             self.points[0][0] += random.choice(list(range(-1,1+1)))
             self.points[0][1] += random.choice(list(range(-1,1+1)))
@@ -159,11 +178,11 @@ class PolygonPlayer:
                 point[0] += random.choice(list(range(-1,1+1)))
                 point[1] += random.choice(list(range(-1,1+1)))
     def render(self) -> None:
-        use_alpha = False
+        use_alpha = True
         use_add = not use_alpha
         if use_alpha:
             flag = pygame.BLEND_ALPHA_SDL2
-            polygon_color_shape = pygame.color.Color(90,10,10)
+            polygon_color_shape = pygame.color.Color(20,20,20)
             polygon_color_effect = pygame.color.Color(20,20,20,100)
         if use_add:
             flag = pygame.BLEND_ADD
@@ -171,19 +190,17 @@ class PolygonPlayer:
             polygon_color_effect = pygame.color.Color(40,40,40)
 
         if use_alpha: # Only show base shape while debugging
-            draw_shape = False
-            draw_effect = True
+            draw_shape = True
+            draw_effect = False
         if use_add: # Show both shapes: the add makes the basic shape look dynamic
             draw_shape = True
             draw_effect = True
         if draw_shape:
             polygon_surf = pygame.Surface((10,10), pygame.SRCALPHA)
             ### pygame.draw.polygon(surface, color, points, width=0) -> Rect
-            pygame.draw.polygon(polygon_surf, polygon_color_shape, self.shape)
+            pygame.draw.polygon(polygon_surf, polygon_color_shape, self.shape.points)
             ### Surface.blit(source, dest, area=None, special_flags=0) -> Rect
-            self.game.game_art.blit(polygon_surf,
-                                    (self.game.game_art.get_width()/2, 10),
-                                    special_flags=flag)
+            self.game.game_art.blit(polygon_surf, self.pos, special_flags=flag)
         if draw_effect:
             polygon_surf = pygame.Surface((10,10), pygame.SRCALPHA)
             ### pygame.draw.polygon(surface, color, points, width=0) -> Rect
