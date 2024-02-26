@@ -39,6 +39,12 @@ import random
 
 logger = logging.getLogger(__name__)
 
+def what_utils_logger():
+    """logger = logging.getLogger(__name__) """
+    sys.exit(f"__name__: {__name__}, logger: {logger}")
+    ### __name__: scripts.utils,
+    ### logger: <Logger scripts.utils (DEBUG)>
+
 def setup_logging(loglevel:str="WARNING",
                   detailed:bool=False,
                   log_file:Path=None) -> logging.Logger:
@@ -171,42 +177,66 @@ class PolygonPlayer:
         - TODO: check for collisions
         - Advance animation by one tick of the game loop
         """
-        # Apply gravity with terminal velocity
-        self.velocity[1] = min(3, self.velocity[1] + 0.1)
+        # Reset collisions
+        self.collisions = {'top':False, 'bottom': False, 'right': False, 'left': False}
 
         # Calculate motion
         frame_movement = (movement[0] + self.velocity[0], # x
                           movement[1] + self.velocity[1]) # y
-        # Update position
+        logger.debug(f"frame_movement: {frame_movement}")
+        logger.debug(f"self.pos: {self.pos}, bottom: {self.rect().bottom}")
+
+        # Update x position
         self.pos[0] += frame_movement[0]                # Update x
-        self.pos[1] += frame_movement[1]                # Update y
+        logger.debug(f"self.pos[0]: {self.pos[0]}")
 
-        # Reset collisions
-        self.collisions = {'top':False, 'bottom': False, 'right': False, 'left': False}
-
-        # TODO: Check for collisions
+        # Check for x-collisions
         player_rect = self.rect()
         for rect in tilemap.rects_around(self.pos):
             ### pygame.Rect.colliderect(Rect)
             if player_rect.colliderect(rect):
                 if frame_movement[0] > 0:
+                    logger.debug("Collision: right")
                     player_rect.right = rect.left
                     self.collisions['right'] = True
                 if frame_movement[0] < 0:
+                    logger.debug("Collision: left")
                     player_rect.left = rect.right
                     self.collisions['left'] = True
+                # Record player x-position after collision.
+                self.pos[0] = player_rect.x
+
+        # Update y position
+        self.pos[1] += frame_movement[1]                # Update y
+        logger.debug(f"self.pos[1]: {self.pos[1]}")
+
+        logger.debug(f"self.pos: {self.pos}, bottom: {self.rect().bottom}")
+        # Check for y-collisions
+        player_rect = self.rect()
+        for rect in tilemap.rects_around(self.pos):
+            ### pygame.Rect.colliderect(Rect)
+            if player_rect.colliderect(rect):
                 if frame_movement[1] > 0:
+                    logger.debug(f"Player bottom: {player_rect.bottom} collides with rect: {rect}, rect.top: {rect.top}.")
                     player_rect.bottom = rect.top
+                    logger.debug(f"New player bottom: {player_rect.bottom}.")
                     self.collisions['bottom'] = True
                 if frame_movement[1] < 0:
+                    logger.debug("Collision: top")
                     player_rect.top = rect.bottom
                     self.collisions['top'] = True
-            self.pos[0] = player_rect.x
-            self.pos[1] = player_rect.y
+                # Record player y-position after collision.
+                self.pos[1] = player_rect.y
+
+        # Apply gravity with terminal velocity
+        self.velocity[1] = min(5, self.velocity[1] + 0.1)
 
         # Reset velocity if falling/rising stopped by a collision.
         if self.collisions['bottom'] or self.collisions['top']:
             self.velocity[1] = 0
+            logger.debug(f"self.velocity: {self.velocity}")
+            logger.debug(f"self.pos: {self.pos}")
+            logger.debug(f"Player bottom: {self.rect().bottom}")
 
         # Animation
         if self.frame == 0:
@@ -222,10 +252,11 @@ class PolygonPlayer:
         if 0: # Example of modifying a single point
             self.points[0][0] += random.choice(list(range(-1,1+1)))
             self.points[0][1] += random.choice(list(range(-1,1+1)))
-        if 1: # Modify all points
+        if 0: # Modify all points
             for point in self.points:
                 point[0] += random.choice(list(range(-1,1+1)))
                 point[1] += random.choice(list(range(-1,1+1)))
+
     def render(self) -> None:
         use_alpha = True
         use_add = not use_alpha

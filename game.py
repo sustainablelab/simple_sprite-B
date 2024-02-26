@@ -13,8 +13,12 @@ from pathlib import Path
 from scripts.utils import (
         setup_logging,
         PolygonPlayer,
+        what_utils_logger,
         )
-from scripts.tilemap import Tilemap
+from scripts.tilemap import (
+        Tilemap,
+        what_tilemap_logger,
+        )
 
 def shutdown():
     """Clean up before exiting the game.
@@ -249,4 +253,6 @@ if __name__ == '__main__':
             log_file=Path(__file__).with_suffix(".log") if args.save_log_file else None
             )
     atexit.register(shutdown)
+    # what_utils_logger()
+    # what_tilemap_logger()
     Game(args.windowed).run()

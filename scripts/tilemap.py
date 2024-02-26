@@ -1,9 +1,21 @@
 #!/usr/bin/env python
 # vim: set fileencoding=utf-8 :
 """TODO: write a script docstring.
+TODO: troubleshoot logging:
+https://python.tutorialink.com/how-to-use-logging-getlogger__name__-in-multiple-modules/
 """
 import sys
 import pygame
+import logging
+
+# logger = logging.getLogger("tilemap")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+def what_tilemap_logger():
+    """logger = logging.getLogger(__name__) """
+    sys.exit(f"__name__: {__name__}, logger: {logger}")
+    ### __name__: scripts.tilemap,
+    ### logger: <Logger scripts.tilemap (WARNING)>
 
 class Tilemap:
     def __init__(self, game, tile_size=4):
@@ -63,6 +75,10 @@ class Tilemap:
                 tile['pos'][0] * self.tile_size,
                 tile['pos'][1] * self.tile_size,
                 self.tile_size, self.tile_size))
+        logger.debug(f"pos: {pos}, rects: {rects}")
+        # if rects != []: logger.debug(f"pos: {pos}, rects: {rects}")
+        ### pos: [160.0, 85.50000000000001],
+        ### rects: [<rect(156, 88, 4, 4)>, <rect(160, 88, 4, 4)>, <rect(164, 88, 4, 4)>]
         return rects
 
     def render(self, surf, offset=(0,0)):
