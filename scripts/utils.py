@@ -39,12 +39,6 @@ import random
 
 logger = logging.getLogger(__name__)
 
-def what_utils_logger():
-    """logger = logging.getLogger(__name__) """
-    sys.exit(f"__name__: {__name__}, logger: {logger}")
-    ### __name__: scripts.utils,
-    ### logger: <Logger scripts.utils (DEBUG)>
-
 def setup_logging(loglevel:str="WARNING",
                   detailed:bool=False,
                   log_file:Path=None) -> logging.Logger:
@@ -105,7 +99,7 @@ def setup_logging(loglevel:str="WARNING",
                         the record is emitted
     """
     # Make the logger
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     # --Formatting--
     # Detail formatter includes lots of detail
@@ -188,11 +182,10 @@ class PolygonPlayer:
 
         # Update x position
         self.pos[0] += frame_movement[0]                # Update x
-        logger.debug(f"self.pos[0]: {self.pos[0]}")
 
         # Check for x-collisions
         player_rect = self.rect()
-        for rect in tilemap.rects_around(self.pos):
+        for rect in tilemap.rects_around(self.shape.size, self.pos):
             ### pygame.Rect.colliderect(Rect)
             if player_rect.colliderect(rect):
                 if frame_movement[0] > 0:
@@ -208,21 +201,20 @@ class PolygonPlayer:
 
         # Update y position
         self.pos[1] += frame_movement[1]                # Update y
-        logger.debug(f"self.pos[1]: {self.pos[1]}")
 
-        logger.debug(f"self.pos: {self.pos}, bottom: {self.rect().bottom}")
         # Check for y-collisions
         player_rect = self.rect()
-        for rect in tilemap.rects_around(self.pos):
+        ### rects_around(self, size, pos) -> list:
+        for rect in tilemap.rects_around(self.shape.size, self.pos):
             ### pygame.Rect.colliderect(Rect)
             if player_rect.colliderect(rect):
                 if frame_movement[1] > 0:
-                    logger.debug(f"Player bottom: {player_rect.bottom} collides with rect: {rect}, rect.top: {rect.top}.")
+                    logger.debug(f"Collision: bottom!\n\tPlayer bottom: {player_rect.bottom} collides with rect: {rect}, rect.top: {rect.top}.")
                     player_rect.bottom = rect.top
                     logger.debug(f"New player bottom: {player_rect.bottom}.")
                     self.collisions['bottom'] = True
                 if frame_movement[1] < 0:
-                    logger.debug("Collision: top")
+                    logger.debug("Collision: top!")
                     player_rect.top = rect.bottom
                     self.collisions['top'] = True
                 # Record player y-position after collision.
@@ -234,9 +226,6 @@ class PolygonPlayer:
         # Reset velocity if falling/rising stopped by a collision.
         if self.collisions['bottom'] or self.collisions['top']:
             self.velocity[1] = 0
-            logger.debug(f"self.velocity: {self.velocity}")
-            logger.debug(f"self.pos: {self.pos}")
-            logger.debug(f"Player bottom: {self.rect().bottom}")
 
         # Animation
         if self.frame == 0:
