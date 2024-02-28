@@ -10,7 +10,8 @@ import atexit
 import logging
 import argparse
 from pathlib import Path
-from scripts.utils import setup_logging, PolygonPlayer
+from scripts.utils import setup_logging
+from scripts.polygon_players import PolygonPlayer
 from scripts.tilemaps import Tilemap
 
 def shutdown():
@@ -108,7 +109,7 @@ class Game:
         # FPS
         self.clock = pygame.time.Clock()
 
-        self.windowed = windowed
+        # self.windowed = windowed
 
     def run(self):
         while True: self.game_loop()
@@ -192,9 +193,11 @@ class Game:
             logger.info("FULLSCREEN")
             # Get desktop size (size of full screen)
             # TODO: handle case where there are multiple displays
+            # To always use external display, change to desktop_sizes[-1]
             desktop_sizes = pygame.display.get_desktop_sizes()
             logger.debug(f"pygame.display.get_desktop_sizes(): {desktop_sizes}")
-            ### Framework laptop: pygame.display.get_desktop_sizes(): [(1496, 1002)]
+            ### Framework Ubuntu: pygame.display.get_desktop_sizes(): [(1496, 1002)]
+            ### Framework Ubuntu Xorg: pygame.display.get_desktop_sizes(): [(2256, 1504)]
             self.screen_size = desktop_sizes[0]
         else:
             logger.info("WINDOWED")
