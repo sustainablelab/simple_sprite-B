@@ -8,17 +8,29 @@ https://python.tutorialink.com/how-to-use-logging-getlogger__name__-in-multiple-
     >>> b = [3, 4]
     >>> a+b
     [1, 2, 3, 4]
+
+    >>> int(10//10)
+    1
+    >>> int(10//4)
+    2
+
+    From numpy.ceil doc: The ceil of the scalar "x" is the smallest integer
+    "i", such that "i >= x".
+    >>> int(np.ceil(10/10))
+    1
+    >>> int(np.ceil(10/4))
+    3
 """
 import os
 import sys
 import pygame
 import logging
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 class Tilemap:
-    # def __init__(self, game, tile_size=10):
-    def __init__(self, game, tile_size=4):
+    def __init__(self, game, tile_size=8):
         self.game = game
         self.tile_size = tile_size
         self.tilemap = {}
@@ -50,37 +62,80 @@ class Tilemap:
         many tiles overlapping the entity.
 
         The tiles around the entity only touch a common center tile if the
-        entity size and tile size are the same.
-        """
-        tiles = []
-        # Get location of "pos" in tilemap grid coordinates
-        tile_loc = (int(pos[0] // self.tile_size), int(pos[1] // self.tile_size))
-        # Get entity size in units of tiles
-        size_in_tiles = size[0]/self.tile_size # Assume player width = player height
-        # List all tiles overlapping and adjacent to the player
-        # Keep in mind that if player is bigger than tiles, then "tile_loc" is
-        # the upper-left tile that overlaps the player (not the center tile!)
-        # Platform     Fall collision     On-platform collision
-        #                                 n n n n n 76
-        #              n n n n 80         n o o o n 80
-        #              n o o o 84         n o o o n 84
-        # t t t t 88   n o o o 88         n o o o n 88
-        #              n o o o 92         n n n n n <--- need this row to see "on-platform"
-        #              n n n n 96
-        #
-        #
-        # TODO: automate this (do not hard-code)
+        entity size and tile size are the same. That is the case in the
+        DaFluffyPotato NINJA GAME tutorial.
+
+        In my case, the entity size is larger than the tile size. How do I
+        handle this?
+
+        Say my tile size is 4x4 and my player size is 10x10. Here is what
+        happens when the player falls onto a platform.
+
+        t : tile
+        o : tiles that overlap with player
+        n : tiles that neighbor the player
+
+        I draw my t, o, and n on screen as if this were "tile space" and I put
+        the pixel y-coordinate next to each row of tile space.
+
+        - On the left, I show where the platform is.
+        - In the middle, I show the player location when initially colliding
+          with the platform.
+        - On the right, I show the player location when standing on the
+          platform.
+
+        Platform     Fall collision     On-platform collision
+                                        76 n n n n n 
+                     80 n n n n n       80 n o o o n 
+                     84 n o o o n       84 n o o o n 
+        88 t t t t   88 n o o o n       88 n o o o n 
+                     92 n o o o n       92 n n n n n  <--- this row sees "on-platform"
+                     96 n n n n n
+
+        Keep in mind that when the player is bigger than the tiles, the
+        "tile_loc" is the upper-left tile that overlaps the player. (The
+        "tile_loc" is not the center tile!)
+
+            tile_loc = (int(pos[0] // self.tile_size), int(pos[1] // self.tile_size))
+
+        Since the tiles and player are square, the overlapping tiles form a
+        square. I call this square the entity-size-in-tiles.
+
+        I do not assume player size is a multiple of tile size. But entity-
+        size-in-tiles must be a natural number. So I count a partial
+        overlap of player and tile the same as a complete overlap.
+
+        For example, in the picture above, the overlap is a 3x3 square:
+
+            o o o
+            o o o
+            o o o
+
+        10/4 = 2.5, not 3, but I round up to the nearest whole number.
+
+        >>> int(np.ceil(10/4))
+        3
+
+        Say tile size is 5 instead of 4. Then 10/5 = 2. Since this is a whole
+        number, the entity-size-in-tiles is only 2x2:
+
+            o o
+            o o
+
+        Returning to the example, how do I automate this?
+        First, I hardcode the o (overlap) and n (neighbor) tiles like this:
+
         OVERLAPPING_OFFSETS = [
-                ( 0, 0),
-                ( 0, 1),
-                ( 0, 2),
-                ( 1, 0),
-                ( 1, 1),
-                ( 1, 2),
-                ( 2, 0),
-                ( 2, 1),
-                ( 2, 2),
-                ]
+                            (0, 0),                     # top-left
+                            (0, 1),                     # top-center
+                            (0, 2),                     # top-right
+                            (1, 0),                     # mid-left
+                            (1, 1),                     # center
+                            (1, 2),                     # mid-right
+                            (2, 0),                     # bot-left
+                            (2, 1),                     # bot-center
+                            (2, 2),                     # bot-right
+                            ]
         NEIGHBOR_OFFSETS = [
                             (-1,-1),                    # top
                             ( 0,-1),                    # top
@@ -102,15 +157,60 @@ class Tilemap:
                             (-1, 2),                    # left
                             (-1, 3),                    # left
                            ]
-        for offset in (OVERLAPPING_OFFSETS + NEIGHBOR_OFFSETS):
+
+        >>> e_size_in_tiles = int(np.ceil(10/4))
+        >>> overlapping_offsets = []
+        >>> offsets = tuple(range(0,e_size_in_tiles))
+        >>> for xo in offsets:
+        ...     for yo in offsets:
+        ...         overlapping_offsets.append((xo,yo))
+        >>> overlapping_offsets
+        [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
+
+        >>> neighbor_offsets = []
+        >>> offsets = tuple(range(0,e_size_in_tiles+1))
+        >>> for o in offsets:
+        ...     neighbor_offsets.append((o, e_size_in_tiles)) # bottom
+        ...     neighbor_offsets.append((o-1, -1))       # top
+        ...     neighbor_offsets.append((e_size_in_tiles, o-1)) # right
+        ...     neighbor_offsets.append((-1, o)) # left
+        >>> neighbor_offsets
+        [(0, 3), (-1, -1), (3, -1), (-1, 0),
+         (1, 3), (0, -1),  (3, 0),  (-1, 1),
+         (2, 3), (1, -1),  (3, 1),  (-1, 2),
+         (3, 3), (2, -1),  (3, 2),  (-1, 3)]
+        """
+        tiles = []
+        # Get location of "pos" in tilemap grid coordinates
+        tile_loc = (int(pos[0] // self.tile_size), int(pos[1] // self.tile_size))
+        # Get entity size in units of tiles
+        e_size = size[0]                                # Assume player width = player height
+        # Assume entity size >= tile size
+        # If the entity size is not an exact multiple of the tile size, round up.
+        e_size_in_tiles = int(np.ceil(e_size/self.tile_size))
+        # List all tiles overlapping the player
+        overlapping_offsets = []
+        offsets = tuple(range(0,e_size_in_tiles))
+        for xo in offsets:
+            for yo in offsets:
+                overlapping_offsets.append((xo,yo))
+        # List all tiles that neighbor the player
+        neighbor_offsets = []
+        offsets = tuple(range(0,e_size_in_tiles+1))
+        for o in offsets:
+            neighbor_offsets.append((o, e_size_in_tiles)) # bottom
+            neighbor_offsets.append((o-1, -1))            # top
+            neighbor_offsets.append((e_size_in_tiles, o-1)) # right
+            neighbor_offsets.append((-1, o))              # left
+        for offset in (overlapping_offsets + neighbor_offsets):
             this_loc = (tile_loc[0] + offset[0], tile_loc[1] + offset[1])
             if this_loc in self.tilemap:
                 tiles.append(self.tilemap[this_loc])
         if tiles != []:
             logger.debug(f"tile_loc: {tile_loc}, "
-                         f"size_in_tiles: {size_in_tiles}, "
+                         f"e_size_in_tiles: {e_size_in_tiles}, "
                          f"tiles: {tiles}")
-            ### tile_loc: (40, 20), size_in_tiles: 2.5,
+            ### tile_loc: (40, 20), e_size_in_tiles: 2.5,
             ### tiles: [{'type': 'floor', 'pos': (40, 22)},
             ###         {'type': 'floor', 'pos': (41, 22)},
             ###         {'type': 'floor', 'pos': (42, 22)},
@@ -163,4 +263,4 @@ if __name__ == '__main__':
     from pathlib import Path
     print(f"Run doctests in {Path(__file__).name}")
     import doctest
-    doctest.testmod()
+    doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE)

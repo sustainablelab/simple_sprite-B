@@ -145,6 +145,7 @@ class PolygonPlayer:
         self.game = game
         self.img_dur = img_dur
         # Store a basic shape which will then get animated with randomness.
+        # TODO: store a collision size and a pygame.Surface size.
         size = (10,10)
         self.shape = Points(size,[
                 pygame.math.Vector2(2,2), # top left
